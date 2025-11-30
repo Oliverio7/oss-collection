@@ -1,3 +1,4 @@
+<!--
 <div align="center">
   <h1>📂 Open Source Collection</h1>
   <p>
@@ -82,3 +83,4 @@ Feel free to fork this repository, study the code, or use it in your own project
 <div align="center">
   <sub>Built by <strong>Oliverio</strong></sub>
 </div>
+-->
