@@ -1,4 +1,5 @@
 require("dotenv").config();
+const PREFIX = process.env.PREFIX;
 const TOKEN = process.env.DISCORD_TOKEN;
 const { Client, GatewayIntentBits, Events } = require("discord.js");
 const client = new Client({
@@ -12,21 +13,22 @@ const client = new Client({
 // Command handler
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
-  const args = message.content.split(" ");
-  const command = args[0].toLowerCase();
+  if (!message.content.startsWith(PREFIX)) return;
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const command = args.shift().toLowerCase();
 
   switch (command) {
-    case "!ping":
+    case "ping":
       message.reply(`¡Pong! ${client.ws.ping} ms`);
       break;
-    case "!name":
+    case "name":
       message.reply("Sentinel");
       break;
-    case "!avatar":
+    case "avatar":
       message.reply(message.author.displayAvatarURL());
       break;
-    case "!8ball":
-      if (args.length === 1) {
+    case "8ball":
+      if (args.length === 0) {
         message.reply("Please provide a question");
         break;
       }
@@ -43,14 +45,12 @@ client.on(Events.MessageCreate, async (message) => {
       const index = Math.floor(Math.random() * box.length);
       message.reply(box[index]);
       break;
-    case "!gif":
-      if (args.length === 1) {
+    case "gif":
+      if (args.length === 0) {
         message.reply("Please provide a search term");
         break;
       }
-
-      const query = args.slice(1).join(" ");
-
+      const query = args.join(" ");
       try {
         const response = await fetch(
           `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_API_KEY}&q=${query}&limit=10&rating=g`
@@ -71,6 +71,7 @@ client.on(Events.MessageCreate, async (message) => {
       }
       break;
     default:
+      message.reply("Invalid command");
       break;
   }
 });
