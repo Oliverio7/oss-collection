@@ -1,5 +1,6 @@
 require("dotenv").config();
-const PREFIX = process.env.PREFIX;
+const PREFIX = process.env.PREFIX || "!";
+console.log("Active PREFIX:: [" + PREFIX + "]");
 const TOKEN = process.env.DISCORD_TOKEN;
 const { Client, GatewayIntentBits, Events } = require("discord.js");
 const client = new Client({
