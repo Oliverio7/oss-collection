@@ -31,7 +31,16 @@ client.on(Events.MessageCreate, async (message) => {
       message.reply("Sentinel");
       break;
     case "avatar":
-      message.reply(message.author.displayAvatarURL());
+      const avatarUrl = message.author.displayAvatarURL({
+        size: 1024,
+        dynamic: true,
+      });
+      const avatarEmbed = new EmbedBuilder()
+        .setColor(0xff0000)
+        .setTitle(`${message.author.username}'s avatar`)
+        .setImage(avatarUrl)
+        .setTimestamp();
+      message.reply({ embeds: [avatarEmbed] });
       break;
     case "8ball":
       if (args.length === 0) {
