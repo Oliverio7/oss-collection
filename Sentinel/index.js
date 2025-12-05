@@ -16,32 +16,47 @@ const client = new Client({
   ],
 });
 
+// Client ready event
+client.once(Events.ClientReady, (c) => {
+  console.log(`Ready! Logged in as ${c.user.tag}`);
+});
+
 // Command handler
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+
   const command = args.shift().toLowerCase();
 
+  // Switch statement to handle different commands
   switch (command) {
+    // Ping command to check bot latency
     case "ping":
       message.reply(`¡Pong! ${client.ws.ping} ms`);
       break;
     case "name":
       message.reply("Sentinel");
       break;
+    // Avatar command to display user's avatar
     case "avatar":
-      const avatarUrl = message.author.displayAvatarURL({
+      const targetUser = message.mentions.users.first() || message.author;
+
+      const avatarUrl = targetUser.displayAvatarURL({
         size: 1024,
         dynamic: true,
       });
       const avatarEmbed = new EmbedBuilder()
-        .setColor(0xff0000)
-        .setTitle(`${message.author.username}'s avatar`)
+        .setColor(0x0099ff)
+        .setTitle(`${targetUser.username}'s avatar`)
         .setImage(avatarUrl)
+        .setFooter({
+          text: `Requested by: ${message.author.username} ID ${targetUser.id}`,
+        })
         .setTimestamp();
       message.reply({ embeds: [avatarEmbed] });
       break;
+    // 8ball command for random answers
     case "8ball":
       if (args.length === 0) {
         message.reply("Please provide a question");
@@ -60,6 +75,7 @@ client.on(Events.MessageCreate, async (message) => {
       const index = Math.floor(Math.random() * box.length);
       message.reply(box[index]);
       break;
+    // Gif command to search for gifs using Giphy API
     case "gif":
       if (args.length === 0) {
         message.reply("Please provide a search term");
@@ -85,6 +101,7 @@ client.on(Events.MessageCreate, async (message) => {
         message.reply("An error occurred");
       }
       break;
+    // Pokedex command to fetch Pokemon data
     case "pokedex":
       if (args.length === 0) {
         message.reply("Please provide a Pokemon name");
@@ -112,6 +129,8 @@ client.on(Events.MessageCreate, async (message) => {
         const spriteHD =
           data.sprites.other["official-artwork"].front_default ||
           data.sprites.front_default;
+
+        // Create embed with Pokemon details
         const embed = new EmbedBuilder()
           .setColor(0xff0000)
           .setTitle(`${name} #${id}`)
@@ -129,6 +148,12 @@ client.on(Events.MessageCreate, async (message) => {
         console.log(error);
         message.reply("An error occurred");
       }
+      break;
+    case "coin":
+    case "flip":
+      const side = ["heads", "tails"];
+      const winingSide = side[Math.floor(Math.random() * side.length)];
+      message.reply(`The coin landed on ${winingSide}`);
       break;
     default:
       message.reply("Invalid command");
