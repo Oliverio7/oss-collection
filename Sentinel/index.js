@@ -1,47 +1,62 @@
-require("dotenv").config();
-const PREFIX = process.env.PREFIX || "!";
-console.log("Active PREFIX:: [" + PREFIX + "]");
-const TOKEN = process.env.DISCORD_TOKEN;
+require("dotenv").config(); // 1. Load environment variables
+
 const {
   Client,
   GatewayIntentBits,
   Events,
   EmbedBuilder,
+  PermissionsBitField,
 } = require("discord.js");
+
+// --- INITIAL SETUP ---
+const PREFIX = process.env.PREFIX || "!";
+const TOKEN = process.env.DISCORD_TOKEN;
+
+console.log("1. System starting...");
+console.log(`2. Active PREFIX:: [${PREFIX}]`);
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
-// Client ready event
+// --- EVENT: CLIENT READY ---
 client.once(Events.ClientReady, (c) => {
-  console.log(`Ready! Logged in as ${c.user.tag}`);
+  console.log(`✅ Ready! Logged in as ${c.user.tag}`);
 });
 
-// Command handler
+// --- EVENT: GUILD MEMBER ADD (Welcome) ---
+client.on(Events.GuildMemberAdd, (member) => {
+  const channel = member.guild.channels.cache.find(
+    (ch) => ch.name === "general"
+  );
+  if (!channel) return;
+  channel.send(`Welcome to the server, ${member}! 👋`);
+});
+
+// --- EVENT: MESSAGE CREATE (Command Handler) ---
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (!message.content.startsWith(PREFIX)) return;
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
 
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // Switch statement to handle different commands
   switch (command) {
-    // Ping command to check bot latency
     case "ping":
       message.reply(`¡Pong! ${client.ws.ping} ms`);
       break;
+
     case "name":
       message.reply("Sentinel");
       break;
-    // Avatar command to display user's avatar
+
     case "avatar":
       const targetUser = message.mentions.users.first() || message.author;
-
       const avatarUrl = targetUser.displayAvatarURL({
         size: 1024,
         dynamic: true,
@@ -56,7 +71,7 @@ client.on(Events.MessageCreate, async (message) => {
         .setTimestamp();
       message.reply({ embeds: [avatarEmbed] });
       break;
-    // 8ball command for random answers
+
     case "8ball":
       if (args.length === 0) {
         message.reply("Please provide a question");
@@ -75,7 +90,7 @@ client.on(Events.MessageCreate, async (message) => {
       const index = Math.floor(Math.random() * box.length);
       message.reply(box[index]);
       break;
-    // Gif command to search for gifs using Giphy API
+
     case "gif":
       if (args.length === 0) {
         message.reply("Please provide a search term");
@@ -86,22 +101,20 @@ client.on(Events.MessageCreate, async (message) => {
         const response = await fetch(
           `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_API_KEY}&q=${query}&limit=10&rating=g`
         );
-
         const data = await response.json();
 
         if (data.data.length === 0) {
           message.reply("No results found");
           break;
         }
-
         const randomIndex = Math.floor(Math.random() * data.data.length);
         message.reply(data.data[randomIndex].url);
       } catch (error) {
-        console.log(error);
+        console.error(error);
         message.reply("An error occurred");
       }
       break;
-    // Pokedex command to fetch Pokemon data
+
     case "pokedex":
       if (args.length === 0) {
         message.reply("Please provide a Pokemon name");
@@ -117,20 +130,18 @@ client.on(Events.MessageCreate, async (message) => {
           break;
         }
         const data = await response.json();
+
+        // Data Extraction
         const name = data.name.charAt(0).toUpperCase() + data.name.slice(1);
         const id = data.id;
         const type = data.types.map((t) => t.type.name).join(", ");
         const hp = data.stats[0].base_stat;
         const atk = data.stats[1].base_stat;
         const def = data.stats[2].base_stat;
-
-        const sprite = data.sprites.front_default;
-        const sprite_shiny = data.sprites.front_shiny;
         const spriteHD =
           data.sprites.other["official-artwork"].front_default ||
           data.sprites.front_default;
 
-        // Create embed with Pokemon details
         const embed = new EmbedBuilder()
           .setColor(0xff0000)
           .setTitle(`${name} #${id}`)
@@ -145,20 +156,66 @@ client.on(Events.MessageCreate, async (message) => {
 
         message.reply({ embeds: [embed] });
       } catch (error) {
-        console.log(error);
+        console.error(error);
         message.reply("An error occurred");
       }
       break;
+
     case "coin":
     case "flip":
-      const side = ["heads", "tails"];
-      const winingSide = side[Math.floor(Math.random() * side.length)];
-      message.reply(`The coin landed on ${winingSide}`);
+      const sides = ["Heads", "Tails"];
+      const winningSide = sides[Math.floor(Math.random() * sides.length)];
+      message.reply(`The coin landed on ${winningSide}`);
       break;
+
+    case "clear":
+    case "purge":
+      if (
+        !message.member.permissions.has(
+          PermissionsBitField.Flags.ManageMessages
+        )
+      ) {
+        message.reply("You don't have permissions to delete messages!");
+        break;
+      }
+
+      if (args.length === 0) {
+        message.reply(
+          "Please specify how many messages to clear. Example: `!clear 5`"
+        );
+        break;
+      }
+
+      const amount = parseInt(args[0]);
+
+      if (isNaN(amount)) {
+        message.reply("That doesn't look like a number");
+        break;
+      } else if (amount < 1 || amount > 100) {
+        message.reply("Please provide a number between 1 and 100");
+        break;
+      }
+
+      try {
+        const deletedMessages = await message.channel.bulkDelete(amount, true);
+        const confirmationMsg = await message.channel.send(
+          `Successfully deleted **${deletedMessages.size}** messages.`
+        );
+        setTimeout(() => {
+          confirmationMsg.delete().catch(() => {});
+        }, 3000);
+      } catch (error) {
+        console.error(error);
+        message.reply("There was an error trying to prune messages.");
+      }
+      break;
+
     default:
-      message.reply("Invalid command");
+      // Empty default to avoid spamming "Invalid command"
       break;
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// --- FINAL LOGIN ---
+console.log("3. Attempting login...");
+client.login(TOKEN);
